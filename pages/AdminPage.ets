@@ -1,15 +1,9 @@
 import { promptAction } from '@kit.ArkUI';
-import { ToastUtil } from '@pura/harmony-utils';
+import { ToastUtil, LogUtil } from '@pura/harmony-utils';
 import Constants from '../common/constants/Constants';
+import UserService, { AdminUser } from '../common/utils/DB/UserService';
+import SongService, { AdminSong } from '../common/utils/DB/SongService';
 
-// 用户数据模型
-interface User {
-  id: string;
-  username: string;
-  password: string;
-  status: 'active' | 'inactive' | 'banned';
-  createdAt: string;
-}
 
 @Component
 export struct AdminPage {
@@ -21,20 +15,15 @@ export struct AdminPage {
   @State errorMessage: string = ''
 
   // 用户管理状态
-  @State users: User[] = [
-    { id: '1', username: 'admin', password: 'admin123', status: 'active', createdAt: '2025-05-10' },
-    { id: '2', username: 'user1', password: 'password1', status: 'active', createdAt: '2025-05-11' },
-    { id: '3', username: 'user2', password: 'password2', status: 'inactive', createdAt: '2025-05-12' },
-    { id: '4', username: 'user3', password: 'password3', status: 'banned', createdAt: '2025-05-13' }
-  ]
-  @State filteredUsers: User[] = []
+  @State users: AdminUser[] = []
+  @State filteredUsers: AdminUser[] = []
   @State searchKeyword: string = ''
   @State isEditing: boolean = false
   @State isViewing: boolean = false
-  @State newUser: User = { id: '', username: '', password: '', status: 'active', createdAt: '' }
-  @State currentUser: User = { id: '', username: '', password: '', status: 'active', createdAt: '' }
+  @State newUser: AdminUser = { id: '', username: '', password: '', status: 'active', createdAt: '' }
+  @State currentUser: AdminUser = { id: '', username: '', password: '', status: 'active', createdAt: '' }
 
-  // 对话框控制器 - 修复方法，避免直接在初始化时调用Builder方法
+  // 对话框控制器
   userDialogController: CustomDialogController = new CustomDialogController({
     builder: this.UserDialogBuilder,
     autoCancel: true
@@ -45,23 +34,29 @@ export struct AdminPage {
     autoCancel: true
   })
 
-  aboutToAppear() {
+  // 用户服务实例
+  private userService: UserService = new UserService(getContext(this));
+
+
+  async aboutToAppear() {
     try {
-      // 初始化过滤后的用户列表
-      this.filteredUsers = this.users.slice()
-      this.isLoaded = true
+      // 从数据库加载用户
+      this.isLoaded = false;
+      this.users = await this.userService.getAllUsers();
+      this.filteredUsers = this.users.slice();
+      this.isLoaded = true;
 
       // 显示加载成功提示
       promptAction.showToast({
         message: "管理员页面加载成功",
         duration: 3000
-      })
+      });
     } catch(error) {
-      this.errorMessage = "初始化失败：" + JSON.stringify(error)
+      this.errorMessage = "初始化失败：" + JSON.stringify(error);
       promptAction.showToast({
         message: "页面加载出错",
         duration: 3000
-      })
+      });
     }
   }
 
@@ -156,7 +151,7 @@ export struct AdminPage {
 
                     // 用户列表项
                     List() {
-                      ForEach(this.filteredUsers, (user: User) => {
+                      ForEach(this.filteredUsers, (user: AdminUser) => {
                         ListItem() {
                           Row() {
                             Text(user.id).width('15%')
@@ -229,7 +224,7 @@ export struct AdminPage {
     .backgroundColor($r('app.color.background'))
   }
 
-  // 用户对话框构建器 - 修改方法签名，使其返回void
+  // 用户对话框构建器
   @Builder UserDialogBuilder() {
     Column({ space: 15 }) {
       Text(this.isEditing ? '编辑用户' : (this.isViewing ? '查看用户' : '添加用户'))
@@ -335,7 +330,7 @@ export struct AdminPage {
     .borderRadius(10)
   }
 
-  // 删除确认对话框构建器 - 修改方法签名，使其返回void
+  // 删除确认对话框构建器
   @Builder DeleteDialogBuilder() {
     Column({ space: 15 }) {
       Text('确认删除')
@@ -401,10 +396,9 @@ export struct AdminPage {
   }
 
   openAddUserDialog(): void {
-    // 生成新ID (简单实现，实际应由后端生成)
-    const maxId = Math.max(...this.users.map(u => parseInt(u.id)), 0)
+    // 生成新ID (简单实现，数据库会自动生成)
     this.newUser = {
-      id: (maxId + 1).toString(),
+      id: '',
       username: '',
       password: '',
       status: 'active',
@@ -421,14 +415,14 @@ export struct AdminPage {
     this.userDialogController.open()
   }
 
-  viewUser(user: User): void {
-    this.currentUser = {
-      id: user.id,
-      username: user.username,
-      password: user.password,
-      status: user.status,
-      createdAt: user.createdAt
-    }
+  viewUser(user: AdminUser): void {
+    // 复制用户对象 - 不使用展开运算符
+    this.currentUser.id = user.id;
+    this.currentUser.username = user.username;
+    this.currentUser.password = user.password;
+    this.currentUser.status = user.status;
+    this.currentUser.createdAt = user.createdAt;
+
     this.isEditing = false
     this.isViewing = true
 
@@ -440,14 +434,14 @@ export struct AdminPage {
     this.userDialogController.open()
   }
 
-  editUser(user: User): void {
-    this.currentUser = {
-      id: user.id,
-      username: user.username,
-      password: user.password,
-      status: user.status,
-      createdAt: user.createdAt
-    }
+  editUser(user: AdminUser): void {
+    // 复制用户对象 - 不使用展开运算符
+    this.currentUser.id = user.id;
+    this.currentUser.username = user.username;
+    this.currentUser.password = user.password;
+    this.currentUser.status = user.status;
+    this.currentUser.createdAt = user.createdAt;
+
     this.isEditing = true
     this.isViewing = false
 
@@ -461,7 +455,14 @@ export struct AdminPage {
 
   confirmDeleteUser(userId: string): void {
     // 保存要删除的用户ID
-    this.currentUser = this.users.find(user => user.id === userId) || this.currentUser
+    const foundUser = this.users.find(user => user.id === userId);
+    if (foundUser) {
+      this.currentUser.id = foundUser.id;
+      this.currentUser.username = foundUser.username;
+      this.currentUser.password = foundUser.password;
+      this.currentUser.status = foundUser.status;
+      this.currentUser.createdAt = foundUser.createdAt;
+    }
 
     // 使用控制器打开确认对话框
     this.deleteDialogController = new CustomDialogController({
@@ -471,50 +472,84 @@ export struct AdminPage {
     this.deleteDialogController.open()
   }
 
-  deleteUser(): void {
-    // 删除用户并更新列表
-    this.users = this.users.filter(user => user.id !== this.currentUser.id)
-    this.filterUsers()
-    this.deleteDialogController.close()
-    ToastUtil.showToast('用户已删除')
-  }
-
-  saveUser(): void {
-    if (this.isEditing) {
-      // 编辑现有用户
-      if (!this.validateUser(this.currentUser)) return
-
-      const index = this.users.findIndex(u => u.id === this.currentUser.id)
-      if (index !== -1) {
-        this.users[index] = {
-          id: this.currentUser.id,
-          username: this.currentUser.username,
-          password: this.currentUser.password,
-          status: this.currentUser.status,
-          createdAt: this.currentUser.createdAt
-        }
-        this.filterUsers()
-        this.userDialogController.close()
-        ToastUtil.showToast('用户信息已更新')
+  // 明确声明返回类型
+  async deleteUser(): Promise<void> {
+    try {
+      const success = await this.userService.deleteUser(this.currentUser.id);
+      if (success) {
+        // 删除用户并更新列表
+        this.users = this.users.filter(user => user.id !== this.currentUser.id);
+        this.filterUsers();
+        this.deleteDialogController.close();
+        ToastUtil.showToast('用户已从数据库中删除');
+      } else {
+        ToastUtil.showToast('删除用户失败');
       }
-    } else {
-      // 添加新用户
-      if (!this.validateUser(this.newUser)) return
-
-      this.users.push({
-        id: this.newUser.id,
-        username: this.newUser.username,
-        password: this.newUser.password,
-        status: this.newUser.status,
-        createdAt: this.newUser.createdAt
-      })
-      this.filterUsers()
-      this.userDialogController.close()
-      ToastUtil.showToast('新用户已添加')
+    } catch (e) {
+      LogUtil.error('删除用户出错: ' + JSON.stringify(e));
+      ToastUtil.showToast('删除用户失败: ' + e.message);
     }
   }
 
-  validateUser(user: User): boolean {
+  // 明确声明返回类型
+  async saveUser(): Promise<void> {
+    if (this.isEditing) {
+      // 编辑现有用户
+      if (!this.validateUser(this.currentUser)) return;
+
+      try {
+        const success = await this.userService.updateUser(this.currentUser);
+        if (success) {
+          const index = this.users.findIndex(u => u.id === this.currentUser.id);
+          if (index !== -1) {
+            // 不使用展开运算符，直接赋值
+            this.users[index].id = this.currentUser.id;
+            this.users[index].username = this.currentUser.username;
+            this.users[index].password = this.currentUser.password;
+            this.users[index].status = this.currentUser.status;
+            this.users[index].createdAt = this.currentUser.createdAt;
+          }
+          this.filterUsers();
+          this.userDialogController.close();
+          ToastUtil.showToast('用户信息已更新并保存到数据库');
+        } else {
+          ToastUtil.showToast('更新用户失败');
+        }
+      } catch (e) {
+        LogUtil.error('更新用户出错: ' + JSON.stringify(e));
+        ToastUtil.showToast('更新用户失败: ' + e.message);
+      }
+    } else {
+      // 添加新用户
+      if (!this.validateUser(this.newUser)) return;
+
+      try {
+        const newId = await this.userService.addUser(this.newUser);
+        if (newId) {
+          this.newUser.id = newId;
+          // 不使用展开运算符，创建新对象
+          const userToAdd: AdminUser = {
+            id: this.newUser.id,
+            username: this.newUser.username,
+            password: this.newUser.password,
+            status: this.newUser.status,
+            createdAt: this.newUser.createdAt
+          };
+          this.users.push(userToAdd);
+          this.filterUsers();
+          this.userDialogController.close();
+          ToastUtil.showToast('新用户已添加并保存到数据库');
+        } else {
+          ToastUtil.showToast('添加用户失败');
+        }
+      } catch (e) {
+        LogUtil.error('添加用户出错: ' + JSON.stringify(e));
+        ToastUtil.showToast('添加用户失败: ' + e.message);
+      }
+    }
+  }
+
+  validateUser(user: AdminUser): boolean {
     if (!user.username) {
       ToastUtil.showToast('用户名不能为空')
       return false
@@ -562,7 +597,7 @@ export struct AdminPage {
           .alignSelf(ItemAlign.Start)
           .fontColor($r('app.color.reverse'))
 
-        // 现有代码...
+        // 其它内容...
       }
       .padding(15)
       .borderRadius(10)
@@ -577,7 +612,7 @@ export struct AdminPage {
           .alignSelf(ItemAlign.Start)
           .fontColor($r('app.color.reverse'))
 
-        // 现有代码...
+        // 其它内容...
       }
       .padding(15)
       .borderRadius(10)
@@ -597,4 +632,6 @@ export struct AdminPage {
     .width('100%')
     .padding(15)
   }
+
+
 }
