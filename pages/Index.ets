@@ -21,6 +21,8 @@ import { ApiDialog } from '../components/dialog/ApiDialog';
 import PreferencesUtils from '../common/utils/data/PreferencesUtils';
 import { DebugPage } from './DebugPage';
 import BreakpointUtils from '../common/utils/system/BreakpointUtils';
+import { PhoneLogin } from './login/PhoneLogin';
+import { RegisterPage } from './login/RegisterPage';
 
 @Entry
 @Component
@@ -162,6 +164,12 @@ struct Index {
     }
     else if(name == 'DebugPage') {
       DebugPage()
+    }
+    else if(name === 'PhoneLogin') {
+      PhoneLogin()
+    }
+    else if(name === 'RegisterPage') {
+      RegisterPage()
     }
   }
 

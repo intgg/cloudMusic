@@ -19,23 +19,23 @@ export struct LoginPage {
             .padding({ bottom: 10 })
 
           Row() {
-            // 网页登录
+            // 手机号登录 - 改名为"登录"
             LoginTypeButton({
               icon: $r('app.media.ic_celiakeyboard_default'),
               bgColor: Color.Orange,
-              text: '网页登录',
+              text: '登录',
               ClickOp: () => {
-                this.pageInfos.replacePathByName('WebLogin', null)
+                this.pageInfos.replacePathByName('PhoneLogin', null)
               }
             })
 
-            // 二维码登录
+            // 注册功能 - 取代原来的二维码登录
             LoginTypeButton({
-              icon: $r('app.media.ic_public_input_code'),
-              bgColor: Color.Red,
-              text: '二维码登录',
+              icon: $r('app.media.ic_public_add_norm'), // 使用添加图标代替二维码图标
+              bgColor: Color.Green, // 更改按钮颜色为绿色
+              text: '注册',
               ClickOp: () => {
-                this.pageInfos.replacePathByName('QrCodeLogin', null)
+                this.pageInfos.replacePathByName('RegisterPage', null)
               }
             })
           }
