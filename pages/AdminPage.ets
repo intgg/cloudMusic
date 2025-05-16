@@ -23,7 +23,16 @@ export struct AdminPage {
   @State newUser: AdminUser = { id: '', username: '', password: '', status: 'active', createdAt: '' }
   @State currentUser: AdminUser = { id: '', username: '', password: '', status: 'active', createdAt: '' }
 
-  // 对话框控制器
+  // 歌曲管理状态
+  @State songs: AdminSong[] = []
+  @State filteredSongs: AdminSong[] = []
+  @State songSearchKeyword: string = ''
+  @State isEditingSong: boolean = false
+  @State isViewingSong: boolean = false
+  @State newSong: AdminSong = { id: '', name: '', artist: '', album: '', duration: '0:00', status: 'active' }
+  @State currentSong: AdminSong = { id: '', name: '', artist: '', album: '', duration: '0:00', status: 'active' }
+
+  // 对话框控制器 - 用户管理
   userDialogController: CustomDialogController = new CustomDialogController({
     builder: this.UserDialogBuilder,
     autoCancel: true
@@ -34,16 +43,45 @@ export struct AdminPage {
     autoCancel: true
   })
 
-  // 用户服务实例
+  // 对话框控制器 - 歌曲管理
+  songDialogController: CustomDialogController = new CustomDialogController({
+    builder: this.SongDialogBuilder,
+    autoCancel: true
+  })
+
+  deleteSongDialogController: CustomDialogController = new CustomDialogController({
+    builder: this.DeleteSongDialogBuilder,
+    autoCancel: true
+  })
+
+  // 服务实例
   private userService: UserService = new UserService(getContext(this));
+  private songService: SongService = new SongService(getContext(this));
 
 
   async aboutToAppear() {
     try {
-      // 从数据库加载用户
+      // 从数据库加载用户和歌曲
       this.isLoaded = false;
-      this.users = await this.userService.getAllUsers();
-      this.filteredUsers = this.users.slice();
+
+      const results = await Promise.all([
+        this.userService.getAllUsers(),
+        this.songService.getAllSongs()
+      ]);
+      const users = results[0];
+      const songs = results[1];
+
+      // 然后继续使用这些变量
+      this.users = users;
+      this.filteredUsers = users.slice();
+      this.songs = songs;
+      this.filteredSongs = songs.slice();
+      this.users = users;
+      this.filteredUsers = users.slice();
+
+      this.songs = songs;
+      this.filteredSongs = songs.slice();
+
       this.isLoaded = true;
 
       // 显示加载成功提示
@@ -330,7 +368,139 @@ export struct AdminPage {
     .borderRadius(10)
   }
 
-  // 删除确认对话框构建器
+  // 歌曲对话框构建器
+  @Builder SongDialogBuilder() {
+    Column({ space: 15 }) {
+      Text(this.isEditingSong ? '编辑歌曲' : (this.isViewingSong ? '查看歌曲' : '添加歌曲'))
+        .fontSize(20)
+        .fontWeight(FontWeight.Bold)
+        .width('100%')
+
+      Column({ space: 10 }) {
+        Text('ID').fontSize(14).alignSelf(ItemAlign.Start)
+        TextInput({ text: this.isEditingSong || this.isViewingSong ? this.currentSong.id : this.newSong.id })
+          .width('100%')
+          .enabled(false)
+      }
+
+      Column({ space: 10 }) {
+        Text('歌曲名').fontSize(14).alignSelf(ItemAlign.Start)
+        TextInput({ text: this.isEditingSong || this.isViewingSong ? this.currentSong.name : this.newSong.name })
+          .width('100%')
+          .enabled(!this.isViewingSong)
+          .onChange((value: string) => {
+            if (this.isEditingSong) {
+              this.currentSong.name = value
+            } else {
+              this.newSong.name = value
+            }
+          })
+      }
+
+      Column({ space: 10 }) {
+        Text('歌手').fontSize(14).alignSelf(ItemAlign.Start)
+        TextInput({ text: this.isEditingSong || this.isViewingSong ? this.currentSong.artist : this.newSong.artist })
+          .width('100%')
+          .enabled(!this.isViewingSong)
+          .onChange((value: string) => {
+            if (this.isEditingSong) {
+              this.currentSong.artist = value
+            } else {
+              this.newSong.artist = value
+            }
+          })
+      }
+
+      Column({ space: 10 }) {
+        Text('专辑').fontSize(14).alignSelf(ItemAlign.Start)
+        TextInput({ text: this.isEditingSong || this.isViewingSong ? this.currentSong.album : this.newSong.album })
+          .width('100%')
+          .enabled(!this.isViewingSong)
+          .onChange((value: string) => {
+            if (this.isEditingSong) {
+              this.currentSong.album = value
+            } else {
+              this.newSong.album = value
+            }
+          })
+      }
+
+      Column({ space: 10 }) {
+        Text('时长').fontSize(14).alignSelf(ItemAlign.Start)
+        TextInput({ text: this.isEditingSong || this.isViewingSong ? this.currentSong.duration : this.newSong.duration })
+          .width('100%')
+          .enabled(!this.isViewingSong)
+          .onChange((value: string) => {
+            if (this.isEditingSong) {
+              this.currentSong.duration = value
+            } else {
+              this.newSong.duration = value
+            }
+          })
+      }
+
+      if (this.isEditingSong || !this.isViewingSong) {
+        Column({ space: 10 }) {
+          Text('状态').fontSize(14).alignSelf(ItemAlign.Start)
+          Select([
+            { value: '活跃' },
+            { value: '隐藏' }
+          ])
+            .selected(this.getSongStatusIndex(this.isEditingSong ? (this.currentSong.status ?? 'active') : (this.newSong.status ?? 'active')))
+            .value(this.getSongStatusText(this.isEditingSong ? (this.currentSong.status ?? 'active') : (this.newSong.status ?? 'active')))
+            .width('100%')
+            .onSelect((index: number) => {
+              const status = this.getSongStatusFromIndex(index)
+              if (this.isEditingSong) {
+                this.currentSong.status = status
+              } else {
+                this.newSong.status = status
+              }
+            })
+        }
+      } else {
+        Column({ space: 10 }) {
+          Text('状态').fontSize(14).alignSelf(ItemAlign.Start)
+          Text(this.getSongStatusText(this.currentSong.status ?? 'active'))
+            .fontColor(this.getSongStatusColor(this.currentSong.status ?? 'active'))
+            .fontSize(16)
+            .width('100%')
+        }
+      }
+
+      Row({ space: 20 }) {
+        Button('取消')
+          .width('45%')
+          .onClick(() => {
+            this.songDialogController.close()
+          })
+
+        if (this.isViewingSong) {
+          Button('确定')
+            .width('45%')
+            .backgroundColor($r('app.color.app_red'))
+            .onClick(() => {
+              this.songDialogController.close()
+            })
+        } else {
+          Button('保存')
+            .width('45%')
+            .backgroundColor($r('app.color.app_red'))
+            .onClick(() => {
+              this.saveSong()
+            })
+        }
+      }
+      .width('100%')
+      .margin({ top: 20 })
+    }
+    .width('90%')
+    .padding(20)
+    .backgroundColor($r('app.color.background'))
+    .borderRadius(10)
+  }
+
+  // 删除用户确认对话框构建器
   @Builder DeleteDialogBuilder() {
     Column({ space: 15 }) {
       Text('确认删除')
@@ -361,6 +531,137 @@ export struct AdminPage {
     .padding(20)
     .backgroundColor($r('app.color.background'))
     .borderRadius(10)
+  }
+
+  // 删除歌曲确认对话框构建器
+  @Builder DeleteSongDialogBuilder() {
+    Column({ space: 15 }) {
+      Text('确认删除')
+        .fontSize(20)
+        .fontWeight(FontWeight.Bold)
+
+      Text('确定要删除这首歌曲吗？此操作不可撤销。')
+        .fontSize(16)
+        .margin({ top: 10, bottom: 20 })
+
+      Row({ space: 20 }) {
+        Button('取消')
+          .width('45%')
+          .onClick(() => {
+            this.deleteSongDialogController.close()
+          })
+
+        Button('删除')
+          .width('45%')
+          .backgroundColor(Color.Red)
+          .onClick(() => {
+            this.deleteSong()
+          })
+      }
+      .width('100%')
+    }
+    .width('90%')
+    .padding(20)
+    .backgroundColor($r('app.color.background'))
+    .borderRadius(10)
+  }
+
+  // 内容管理Builder方法
+  @Builder ContentManagement() {
+    Column({ space: 15 }) {
+      // 搜索和操作栏
+      Row({ space: 10 }) {
+        Search({ placeholder: '搜索歌曲...', value: this.songSearchKeyword })
+          .width('70%')
+          .height(40)
+          .onChange((value) => {
+            this.songSearchKeyword = value
+            this.filterSongs()
+          })
+
+        Button('添加歌曲')
+          .height(40)
+          .backgroundColor($r('app.color.app_red'))
+          .width('25%')
+          .onClick(() => this.openAddSongDialog())
+      }
+      .width('100%')
+      .justifyContent(FlexAlign.SpaceBetween)
+      .padding({ bottom: 10 })
+
+      // 歌曲列表
+      Column() {
+        // 表头
+        Row() {
+          Text('ID').width('10%').fontWeight(FontWeight.Bold)
+          Text('歌曲名').width('25%').fontWeight(FontWeight.Bold)
+          Text('歌手').width('20%').fontWeight(FontWeight.Bold)
+          Text('专辑').width('20%').fontWeight(FontWeight.Bold)
+          Text('操作').width('25%').fontWeight(FontWeight.Bold)
+        }
+        .width('100%')
+        .padding(10)
+        .backgroundColor($r('app.color.main'))
+        .borderRadius(5)
+
+        // 歌曲列表项
+        List() {
+          ForEach(this.filteredSongs, (song: AdminSong) => {
+            ListItem() {
+              Row() {
+                Text(song.id).width('10%').textOverflow({ overflow: TextOverflow.Ellipsis })
+                Text(song.name).width('25%').textOverflow({ overflow: TextOverflow.Ellipsis })
+                Text(song.artist).width('20%').textOverflow({ overflow: TextOverflow.Ellipsis })
+                Text(song.album).width('20%').textOverflow({ overflow: TextOverflow.Ellipsis })
+                Row({ space: 8 }) {
+                  Button('查看')
+                    .height(30)
+                    .fontSize(12)
+                    .backgroundColor(Color.Blue)
+                    .onClick(() => this.viewSong(song))
+                  Button('编辑')
+                    .height(30)
+                    .fontSize(12)
+                    .backgroundColor(Color.Orange)
+                    .onClick(() => this.editSong(song))
+                  Button('删除')
+                    .height(30)
+                    .fontSize(12)
+                    .backgroundColor(Color.Red)
+                    .onClick(() => this.confirmDeleteSong(song.id))
+                }
+                .width('25%')
+              }
+              .width('100%')
+              .padding(10)
+              .borderRadius(8)
+              .backgroundColor($r('app.color.background'))
+              .margin({ bottom: 8 })
+            }
+          })
+        }
+        .width('100%')
+
+        if (this.filteredSongs.length === 0) {
+          Text('没有找到匹配的歌曲')
+            .padding(20)
+            .fontColor(Color.Gray)
+        }
+      }
+      .width('100%')
+
+      // 导入默认歌曲按钮
+      Button("导入默认歌曲")
+        .backgroundColor($r('app.color.app_red'))
+        .width('90%')
+        .height(50)
+        .fontSize(16)
+        .onClick(() => {
+          this.importDefaultSongs()
+        })
+    }
+    .width('100%')
+    .padding(15)
   }
 
   // 用户管理辅助方法
@@ -586,52 +887,227 @@ export struct AdminPage {
     }
   }
 
-  // 内容管理Builder方法
-  @Builder ContentManagement() {
-    Column({ space: 15 }) {
-      // 精选歌单管理
-      Column() {
-        Text("精选歌单管理")
-          .fontSize(18)
-          .fontWeight(FontWeight.Bold)
-          .alignSelf(ItemAlign.Start)
-          .fontColor($r('app.color.reverse'))
-
-        // 其它内容...
-      }
-      .padding(15)
-      .borderRadius(10)
-      .backgroundColor($r('app.color.main'))
-      .width('90%')
-
-      // 歌单推荐系统设置
-      Column() {
-        Text("推荐系统设置")
-          .fontSize(18)
-          .fontWeight(FontWeight.Bold)
-          .alignSelf(ItemAlign.Start)
-          .fontColor($r('app.color.reverse'))
-
-        // 其它内容...
-      }
-      .padding(15)
-      .borderRadius(10)
-      .backgroundColor($r('app.color.main'))
-      .width('90%')
-
-      // 保存按钮
-      Button("保存设置")
-        .backgroundColor($r('app.color.app_red'))
-        .width('90%')
-        .height(50)
-        .fontSize(16)
-        .onClick(() => {
-          ToastUtil.showToast("设置已保存")
-        })
+  // 歌曲管理辅助方法
+  filterSongs(): void {
+    if (!this.songSearchKeyword) {
+      this.filteredSongs = this.songs.slice()
+      return
     }
-    .width('100%')
-    .padding(15)
+
+    const keyword = this.songSearchKeyword.toLowerCase()
+    this.filteredSongs = this.songs.filter(song =>
+    song.id.toString().includes(keyword) ||
+    song.name.toLowerCase().includes(keyword) ||
+    song.artist.toLowerCase().includes(keyword) ||
+    song.album.toLowerCase().includes(keyword)
+    )
   }
 
+  getSongStatusText(status: string): string {
+    switch(status) {
+      case 'active': return '活跃'
+      case 'hidden': return '隐藏'
+      default: return status
+    }
+  }
 
+  getSongStatusColor(status: string): ResourceColor | Color {
+    switch(status) {
+      case 'active': return Color.Green
+      case 'hidden': return Color.Gray
+      default: return $r('app.color.reverse')
+    }
+  }
+
+  openAddSongDialog(): void {
+    this.newSong = {
+      id: '',
+      name: '',
+      artist: '',
+      album: '',
+      duration: '0:00',
+      status: 'active'
+    }
+    this.isEditingSong = false
+    this.isViewingSong = false
+
+    this.songDialogController = new CustomDialogController({
+      builder: this.SongDialogBuilder,
+      autoCancel: true
+    })
+    this.songDialogController.open()
+  }
+
+  viewSong(song: AdminSong): void {
+    this.currentSong.id = song.id;
+    this.currentSong.name = song.name;
+    this.currentSong.artist = song.artist;
+    this.currentSong.album = song.album;
+    this.currentSong.duration = song.duration || '0:00';
+    this.currentSong.status = song.status || 'active';
+
+    this.isEditingSong = false
+    this.isViewingSong = true
+
+    this.songDialogController = new CustomDialogController({
+      builder: this.SongDialogBuilder,
+      autoCancel: true
+    })
+    this.songDialogController.open()
+  }
+
+  editSong(song: AdminSong): void {
+    this.currentSong.id = song.id;
+    this.currentSong.name = song.name;
+    this.currentSong.artist = song.artist;
+    this.currentSong.album = song.album;
+    this.currentSong.duration = song.duration || '0:00';
+    this.currentSong.status = song.status || 'active';
+
+    this.isEditingSong = true
+    this.isViewingSong = false
+
+    this.songDialogController = new CustomDialogController({
+      builder: this.SongDialogBuilder,
+      autoCancel: true
+    })
+    this.songDialogController.open()
+  }
+
+  confirmDeleteSong(songId: string): void {
+    const foundSong = this.songs.find(song => song.id === songId);
+    if (foundSong) {
+      this.currentSong.id = foundSong.id;
+      this.currentSong.name = foundSong.name;
+      this.currentSong.artist = foundSong.artist;
+      this.currentSong.album = foundSong.album;
+      this.currentSong.duration = foundSong.duration || '0:00';
+      this.currentSong.status = foundSong.status || 'active';
+    }
+
+    this.deleteSongDialogController = new CustomDialogController({
+      builder: this.DeleteSongDialogBuilder,
+      autoCancel: true
+    })
+    this.deleteSongDialogController.open()
+  }
+
+  async deleteSong(): Promise<void> {
+    try {
+      const success = await this.songService.deleteSong(this.currentSong.id);
+      if (success) {
+        this.songs = this.songs.filter(song => song.id !== this.currentSong.id);
+        this.filterSongs();
+        this.deleteSongDialogController.close();
+        ToastUtil.showToast('歌曲已从数据库中删除');
+      } else {
+        ToastUtil.showToast('删除歌曲失败');
+      }
+    } catch (e) {
+      LogUtil.error('删除歌曲出错: ' + JSON.stringify(e));
+      ToastUtil.showToast('删除歌曲失败: ' + e.message);
+    }
+  }
+
+  async saveSong(): Promise<void> {
+    if (this.isEditingSong) {
+      if (!this.validateSong(this.currentSong)) return;
+
+      try {
+        const success = await this.songService.updateSong(this.currentSong);
+        if (success) {
+          const index = this.songs.findIndex(s => s.id === this.currentSong.id);
+          if (index !== -1) {
+            this.songs[index].name = this.currentSong.name;
+            this.songs[index].artist = this.currentSong.artist;
+            this.songs[index].album = this.currentSong.album;
+            this.songs[index].duration = this.currentSong.duration;
+            this.songs[index].status = this.currentSong.status;
+          }
+          this.filterSongs();
+          this.songDialogController.close();
+          ToastUtil.showToast('歌曲信息已更新并保存到数据库');
+        } else {
+          ToastUtil.showToast('更新歌曲失败');
+        }
+      } catch (e) {
+        LogUtil.error('更新歌曲出错: ' + JSON.stringify(e));
+        ToastUtil.showToast('更新歌曲失败: ' + e.message);
+      }
+    } else {
+      if (!this.validateSong(this.newSong)) return;
+
+      try {
+        const newId = await this.songService.addSong(this.newSong);
+        if (newId) {
+          this.newSong.id = newId;
+          const songToAdd: AdminSong = {
+            id: this.newSong.id,
+            name: this.newSong.name,
+            artist: this.newSong.artist,
+            album: this.newSong.album,
+            duration: this.newSong.duration,
+            status: this.newSong.status
+          };
+          this.songs.push(songToAdd);
+          this.filterSongs();
+          this.songDialogController.close();
+          ToastUtil.showToast('新歌曲已添加并保存到数据库');
+        } else {
+          ToastUtil.showToast('添加歌曲失败');
+        }
+      } catch (e) {
+        LogUtil.error('添加歌曲出错: ' + JSON.stringify(e));
+        ToastUtil.showToast('添加歌曲失败: ' + e.message);
+      }
+    }
+  }
+
+  validateSong(song: AdminSong): boolean {
+    if (!song.name) {
+      ToastUtil.showToast('歌曲名不能为空')
+      return false
+    }
+
+    if (!song.artist) {
+      ToastUtil.showToast('歌手不能为空')
+      return false
+    }
+
+    return true
+  }
+
+  getSongStatusIndex(status: string): number {
+    switch(status) {
+      case 'active': return 0
+      case 'hidden': return 1
+      default: return 0
+    }
+  }
+
+  getSongStatusFromIndex(index: number): 'active' | 'hidden' {
+    switch(index) {
+      case 0: return 'active'
+      case 1: return 'hidden'
+      default: return 'active'
+    }
+  }
+
+  async importDefaultSongs(): Promise<void> {
+    try {
+      ToastUtil.showToast('开始导入默认歌曲...');
+      const success = await this.songService.importDefaultSongs();
+      if (success) {
+        // 重新加载歌曲列表
+        this.songs = await this.songService.getAllSongs();
+        this.filteredSongs = this.songs.slice();
+        ToastUtil.showToast('默认歌曲导入成功');
+      } else {
+        ToastUtil.showToast('导入默认歌曲失败');
+      }
+    } catch (e) {
+      LogUtil.error('导入默认歌曲出错: ' + JSON.stringify(e));
+      ToastUtil.showToast('导入默认歌曲失败: ' + e.message);
+    }
+  }
 }
