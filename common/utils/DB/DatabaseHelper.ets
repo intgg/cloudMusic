@@ -67,17 +67,18 @@ export class DatabaseHelper {
 
     // 创建歌曲表
     const createSongTable = `
-      CREATE TABLE IF NOT EXISTS song (
-        song_id INTEGER PRIMARY KEY AUTOINCREMENT,
-        song_name VARCHAR(100) NOT NULL,
-        artist VARCHAR(100),
-        album VARCHAR(100),
-        duration VARCHAR(10),
-        lyrics TEXT,
-        download_url VARCHAR(255),
-        song_status INTEGER DEFAULT 1
-      )
-    `;
+  CREATE TABLE IF NOT EXISTS song (
+    song_id INTEGER PRIMARY KEY AUTOINCREMENT,
+    song_name VARCHAR(100) NOT NULL,
+    artist VARCHAR(100),
+    album VARCHAR(100),
+    duration VARCHAR(10),
+    lyrics TEXT,
+    download_url VARCHAR(255),
+    song_status INTEGER DEFAULT 1,
+    add_time DATETIME DEFAULT CURRENT_TIMESTAMP
+  )
+`;
 
     // 创建歌单表
     const createPlaylistTable = `

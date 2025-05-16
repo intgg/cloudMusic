@@ -21,7 +21,7 @@ export class SongService {
     this.dbHelper = new DatabaseHelper(context);
   }
 
-  // 获取所有歌曲
+  // 修改 SongService.ets 文件中的 getAllSongs() 方法
   async getAllSongs(): Promise<AdminSong[]> {
     try {
       const db = await this.dbHelper.getRdbStore();
@@ -29,6 +29,21 @@ export class SongService {
 
       const songs: AdminSong[] = [];
       while (resultSet.goToNextRow()) {
+        // 检查列是否存在，避免访问不存在的列
+        let addTime = '';
+        try {
+          // 尝试获取add_time列，如果不存在则使用默认值
+          const columnIndex = resultSet.getColumnIndex('add_time');
+          if (columnIndex >= 0) {
+            addTime = resultSet.getString(columnIndex);
+          } else {
+            addTime = new Date().toISOString().split('T')[0];
+          }
+        } catch (error) {
+          // 如果列不存在或索引错误，使用当前日期
+          addTime = new Date().toISOString().split('T')[0];
+        }
+
         songs.push({
           id: resultSet.getString(resultSet.getColumnIndex('song_id')),
           name: resultSet.getString(resultSet.getColumnIndex('song_name')),
@@ -38,7 +53,7 @@ export class SongService {
           status: this.mapStatusFromDB(
             Number(resultSet.getLong(resultSet.getColumnIndex('song_status')))
           ),
-          addTime: resultSet.getString(resultSet.getColumnIndex('add_time')) || new Date().toISOString().split('T')[0]
+          addTime: addTime
         });
       }
       resultSet.close();

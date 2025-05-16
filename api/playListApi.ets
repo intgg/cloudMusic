@@ -304,20 +304,84 @@ export async function deletePlayList(pid: number): Promise<boolean>{
 }
 
 /**
- * 创建歌单 —— 不可用 illegal
- * @param name
- * @param isPrivacy
+ * 创建歌单
+ * @param name - 歌单名称
+ * @param isPrivacy - 是否设置为隐私歌单
+ * @returns Promise<boolean> - 创建是否成功
  */
-export async function createPlayList(name: string, isPrivacy: boolean) {
+
+/** ========= 精确定义返回结构 ========= */
+interface PlaylistCreateResult {
+  code: number
+  // 需要时可补充其它字段，例如 playlistId、msg 等
+}
+
+interface PlaylistCreateResponse {
+  result: PlaylistCreateResult
+}
+
+/** ========= 过渡接口：仅用于安全检查 ========= */
+interface MaybeResult {
+  code?: number
+}
+
+interface MaybePlaylistResponse {
+  result?: MaybeResult
+}
+/** ==================================== */
+
+export async function createPlayList(
+  name: string,
+  isPrivacy: boolean
+): Promise<boolean> {
   try {
     const rootUrl = await getApiUrl()
-    const url: string = `${rootUrl}/playlist/create?name=${encodeURIComponent(name)}${isPrivacy ? '&privacy=10' : ''}&timestamp=${new Date().getTime()}`
+    const url: string = `${rootUrl}/playlist/create?name=${encodeURIComponent(
+      name
+    )}${isPrivacy ? '&privacy=10' : ''}&timestamp=${new Date().getTime()}`
     LogUtil.info(TAG + 'request Url: ' + url)
+
     const request = new HttpRequest(url)
-    const data = await request.Request()
-    LogUtil.info(TAG + JSON.stringify(data.result))
+    const rawData = await request.Request()
+
+    /** ========== 运行时格式校验，无 “is” 关键字 ========== */
+    let data: PlaylistCreateResponse | null = null
+
+    // 返回为字符串 → 解析 JSON
+    if (typeof rawData === 'string') {
+      try {
+        const parsed = JSON.parse(rawData) as MaybePlaylistResponse
+        if (parsed.result && typeof parsed.result.code === 'number') {
+          data = parsed as PlaylistCreateResponse
+        }
+      } catch (_) {
+        /* JSON 解析失败，data 仍为空 */
+      }
+    }
+    // 返回为对象 → 直接检查字段
+    else if (typeof rawData === 'object' && rawData !== null) {
+      const obj = rawData as MaybePlaylistResponse
+      if (obj.result && typeof obj.result.code === 'number') {
+        data = obj as PlaylistCreateResponse
+      }
+    }
+
+    if (data === null) {
+      LogUtil.error(TAG + '返回格式非法: ' + JSON.stringify(rawData))
+      return false
+    }
+    /** =============================================== */
+
+    // 检查结果并返回成功/失败状态
+    if (data.result.code === 200) {
+      LogUtil.info(TAG + '创建歌单成功: ' + JSON.stringify(data.result))
+      return true
+    } else {
+      LogUtil.error(TAG + '创建歌单失败: ' + JSON.stringify(data.result))
+      return false
+    }
   } catch (e) {
     LogUtil.error(TAG + 'createPlayList Error: ' + e.message)
-
+    return false
   }
 }

@@ -6,6 +6,7 @@ import { Announcement } from "../../common/entities/Announcement";
 import { User, UserClass } from "../../common/entities/User";
 import Constants from "../../common/constants/Constants";
 import { StorageConstants } from "../../common/constants/StorageConstants";
+import { AddPlayListDialog } from "../dialog/AddPlayListDialog"; // 导入对话框组件
 
 /**
  * 用户歌单
@@ -27,6 +28,15 @@ export struct UserPlayLists {
   @State isRefreshing: boolean = false
   @State lastRefreshTime: number = 0
   @State tabsIndex: number = 0
+  // 添加对话框控制器
+  addPlayListDialogController: CustomDialogController = new CustomDialogController({
+    builder: AddPlayListDialog({
+      onSuccess: () => {
+        this.refreshContent()
+      }
+    }),
+    autoCancel: true
+  })
   private refreshCooldown: number = 5000
 
   async aboutToAppear(): Promise<void> {
@@ -73,9 +83,59 @@ export struct UserPlayLists {
               }
               .contentListStyle(this.breakpoint)
             }
+            .tabBar("所有歌单")
+
+            TabContent() {
+              Column() {
+                // 新建歌单按钮
+                Row() {
+                  Button() {
+                    Row({ space: 5 }) {
+                      Image($r('app.media.ic_public_add_norm')).width(16).fillColor($r('app.color.reverse'))
+                      Text('新建歌单').fontSize(Constants.FONT_SIZE_COMMON).fontColor($r('app.color.reverse'))
+                    }
+                  }
+                  .type(ButtonType.Normal)
+                  .backgroundColor(Color.Transparent)
+                  .width('100%')
+                  .height(Constants.HEIGHT_TEXT_BUTTON)
+                  .padding({ left: 20, right: 20 })
+                  .onClick(() => {
+                    // 重新创建并打开对话框
+                    this.addPlayListDialogController = new CustomDialogController({
+                      builder: AddPlayListDialog({
+                        onSuccess: () => {
+                          this.refreshContent()
+                        }
+                      }),
+                      autoCancel: true
+                    })
+                    this.addPlayListDialogController.open()
+                  })
+                }
+                .padding({ top: 10, bottom: 10 })
+
+                List() {
+                  ForEach(this.playLists.filter((item) => item.userId === this.user.data.account.id),
+                    (item: PlayList, index) => {
+                      ListItem() {
+                        PlayListCard({
+                          playList: item,
+                          isShowHeart: item.creator?.userId == this.user.data?.account.id ? false : true
+                        })
+                          .padding( this.breakpoint == 'md' ? 5 : { bottom: 10 } )
+                      }
+                    })
+                  ListItem().height(px2vp(this.bottomRectHeight) + 160)
+                }
+                .contentListStyle(this.breakpoint)
+              }
+            }
+            .tabBar("我创建的")
+
             TabContent() {
               List() {
-                ForEach(this.playLists.filter((item) => item.userId === this.user.data.account.id),
+                ForEach(this.playLists.filter((item) => item.userId !== this.user.data.account.id),
                   (item: PlayList, index) => {
                     ListItem() {
                       PlayListCard({
@@ -89,22 +149,7 @@ export struct UserPlayLists {
               }
               .contentListStyle(this.breakpoint)
             }
-            TabContent() {
-              List() {
-                ForEach(this.playLists.filter((item) => item.userId !== this.user.data.account.id),
-                  (item: PlayList, index) => {
-                  ListItem() {
-                    PlayListCard({
-                      playList: item,
-                      isShowHeart: item.creator?.userId == this.user.data?.account.id ? false : true
-                    })
-                      .padding( this.breakpoint == 'md' ? 5 : { bottom: 10 } )
-                  }
-                })
-                ListItem().height(px2vp(this.bottomRectHeight) + 160)
-              }
-              .contentListStyle(this.breakpoint)
-            }
+            .tabBar("我收藏的")
           }
           .barHeight(0)
           .onAnimationStart((from, target) => {
@@ -194,9 +239,9 @@ export struct UserPlayLists {
 }
 
 @Extend(List) function contentListStyle(breakpoint: string) {
-    .height('100%')
-    .width('100%')
-    .scrollBar(BarState.Off)
-    .lanes(breakpoint == 'md' ? 2 : 1)
-    .expandSafeArea([SafeAreaType.SYSTEM], [SafeAreaEdge.TOP, SafeAreaEdge.BOTTOM])
+  .height('100%')
+  .width('100%')
+  .scrollBar(BarState.Off)
+  .lanes(breakpoint == 'md' ? 2 : 1)
+  .expandSafeArea([SafeAreaType.SYSTEM], [SafeAreaEdge.TOP, SafeAreaEdge.BOTTOM])
 }
