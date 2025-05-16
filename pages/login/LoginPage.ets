@@ -1,4 +1,5 @@
 import Constants from '../../common/constants/Constants';
+import promptAction from '@ohos.promptAction';
 
 /**
  * 登录页面
@@ -18,6 +19,7 @@ export struct LoginPage {
             .fontColor($r('app.color.reverse'))
             .padding({ bottom: 10 })
 
+          // 登录和注册选项
           Row() {
             // 手机号登录 - 改名为"登录"
             LoginTypeButton({
@@ -31,8 +33,8 @@ export struct LoginPage {
 
             // 注册功能 - 取代原来的二维码登录
             LoginTypeButton({
-              icon: $r('app.media.ic_public_add_norm'), // 使用添加图标代替二维码图标
-              bgColor: Color.Green, // 更改按钮颜色为绿色
+              icon: $r('app.media.ic_public_add_norm'),
+              bgColor: Color.Green,
               text: '注册',
               ClickOp: () => {
                 this.pageInfos.replacePathByName('RegisterPage', null)
@@ -41,6 +43,23 @@ export struct LoginPage {
           }
           .width('80%')
           .justifyContent(FlexAlign.SpaceEvenly)
+
+          // 分隔线
+          Divider()
+            .width('80%')
+            .color(Color.Gray)
+            .opacity(0.5)
+            .margin({ top: 10, bottom: 10 })
+
+          // 管理员登录
+          LoginTypeButton({
+            icon: $r('app.media.ic_user_portrait'),
+            bgColor: Color.Blue,
+            text: '管理员登录',
+            ClickOp: () => {
+              this.pageInfos.pushPathByName('AdminLoginPage', null)
+            }
+          })
         }
         .height('100%')
         .width('100%')

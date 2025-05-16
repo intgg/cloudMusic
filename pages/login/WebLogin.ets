@@ -139,22 +139,7 @@ export struct WebLogin {
   @Builder
   Bar() {
     Row() {
-      Button() {
-        Row({ space: 5 }) {
-          Image($r('app.media.ic_public_help')).fillColor($r('app.color.reverse')).height('80%')
-          Text('如何登录?').fontColor($r('app.color.reverse')).height('80%')
-        }
-        .padding({ right: 10 })
-      }
-      .height(30)
-      .alignSelf(ItemAlign.End)
-      .backgroundColor(Color.Transparent)
-      .onClick(() => {
-        DialogUtil.showConfirmDialog({
-          title: '如何登录',
-          message: MsgConstants.HOW_TO_LOGIN_MSG
-        })
-      })
+
       Row({ space: 10 }) {
         Button('获取登录信息').onClick(async () => {
           let result = await this.getCookie()

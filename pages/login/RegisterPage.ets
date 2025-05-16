@@ -94,6 +94,24 @@ export struct RegisterPage {
             }
           }
 
+          // 网页登录选项
+          Row() {
+            Text('注册遇到问题？')
+              .fontSize(14)
+              .fontColor(Color.Gray)
+
+            Button('使用网页登录')
+              .fontSize(14)
+              .backgroundColor(Color.Transparent)
+              .fontColor($r('app.color.app_red'))
+              .onClick(() => {
+                this.pageInfos.replacePathByName('WebLogin', null)
+              })
+          }
+          .width('80%')
+          .justifyContent(FlexAlign.Center)
+          .margin({ top: 20 })
+
           // 返回按钮
           Row() {
             Button(this.currentStep === 1 ? '返回' : '上一步')
@@ -109,7 +127,7 @@ export struct RegisterPage {
           }
           .width('100%')
           .justifyContent(FlexAlign.Center)
-          .margin({ top: 20 })
+          .margin({ top: 10 })
 
         }
         .width('100%')
@@ -374,6 +392,32 @@ export struct RegisterPage {
             .then((result: DialogResult) => {
               if(result.index === 1) {
                 this.pageInfos.replacePathByName('PhoneLogin', null)
+              }
+            })
+            .catch((err: Error) => {
+              LogUtil.error('对话框显示错误: ' + err.message)
+            })
+        }
+        // 增加对风险提示的处理
+        else if(errorMsg.includes('风险') || errorMsg.includes('异常')) {
+          // 提示尝试网页登录
+          promptAction.showDialog({
+            title: '注册提示',
+            message: '当前注册存在风险，建议尝试使用网页注册',
+            buttons: [
+              {
+                text: '取消',
+                color: '#808080'
+              },
+              {
+                text: '去网页登录',
+                color: '#ff176b81'
+              }
+            ]
+          })
+            .then((result: DialogResult) => {
+              if(result.index === 1) {
+                this.pageInfos.replacePathByName('WebLogin', null)
               }
             })
             .catch((err: Error) => {

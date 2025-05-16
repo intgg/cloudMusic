@@ -23,6 +23,8 @@ import { DebugPage } from './DebugPage';
 import BreakpointUtils from '../common/utils/system/BreakpointUtils';
 import { PhoneLogin } from './login/PhoneLogin';
 import { RegisterPage } from './login/RegisterPage';
+import { AdminLoginPage } from './login/AdminLoginPage';
+import { AdminPage } from './AdminPage';
 
 @Entry
 @Component
@@ -170,6 +172,12 @@ struct Index {
     }
     else if(name === 'RegisterPage') {
       RegisterPage()
+    }
+    else if(name === 'AdminLoginPage') {
+      AdminLoginPage()
+    }
+    else if(name === 'AdminPage') {
+      AdminPage()
     }
   }
 
