@@ -114,8 +114,17 @@ export struct AdminLoginPage {
     setTimeout(() => {
       if (this.validateAdmin()) {
         ToastUtil.showToast('管理员登录成功');
-        // 导航到管理员控制台
-        this.pageInfos.pushPathByName('AdminPage', null);
+
+        // 尝试两种导航方式，增加成功概率
+        try {
+          // 方式1：清除导航堆栈后导航
+          this.pageInfos.clear();
+          this.pageInfos.pushPathByName('AdminPage', null, true);
+        } catch (error) {
+          // 方式2：如果上面失败，尝试替换当前页面
+          this.pageInfos.replacePathByName('AdminPage', null, true);
+          console.error('导航到AdminPage时出错: ' + JSON.stringify(error));
+        }
       } else {
         ToastUtil.showToast('用户名或密码错误');
       }
